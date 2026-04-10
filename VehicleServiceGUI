@@ -1,0 +1,196 @@
+  import javax.swing.*;
+	import javax.swing.table.DefaultTableModel;
+	import java.awt.*;
+	import java.awt.event.*;
+	import java.io.*;
+	import java.time.LocalDate;
+	import java.time.format.DateTimeFormatter;
+	import java.time.temporal.ChronoUnit;
+
+	public class VehicleServiceGUI extends JFrame implements ActionListener {
+
+	    JTextField vehicleField, dateField, intervalField, searchField;
+	    JButton checkButton, saveButton, viewButton, searchButton;
+
+	    public VehicleServiceGUI() {
+
+	        setTitle("Vehicle Service Reminder");
+	        setSize(550, 420);
+	        setLayout(null);
+
+	        JPanel panel = new JPanel();
+	        panel.setLayout(null);
+	        panel.setBackground(new Color(245, 250, 255));
+	        panel.setBounds(0, 0, 550, 420);
+	        add(panel);
+
+	        JLabel title = new JLabel("🚗 Service Tracker");
+	        title.setBounds(170, 10, 250, 30);
+	        title.setFont(new Font("Segoe UI", Font.BOLD, 20));
+	        title.setForeground(new Color(60, 90, 150));
+	        panel.add(title);
+
+	        JLabel vLabel = new JLabel("Vehicle Name:");
+	        vLabel.setBounds(40, 70, 120, 25);
+	        panel.add(vLabel);
+
+	        vehicleField = new JTextField();
+	        vehicleField.setBounds(180, 70, 200, 28);
+	        panel.add(vehicleField);
+
+	        JLabel dLabel = new JLabel("Last Service Date:");
+	        dLabel.setBounds(40, 110, 140, 25);
+	        panel.add(dLabel);
+
+	        dateField = new JTextField("dd-MM-yyyy");
+	        dateField.setBounds(180, 110, 200, 28);
+	        panel.add(dateField);
+
+	        JLabel iLabel = new JLabel("Interval (days):");
+	        iLabel.setBounds(40, 150, 120, 25);
+	        panel.add(iLabel);
+
+	        intervalField = new JTextField();
+	        intervalField.setBounds(180, 150, 200, 28);
+	        panel.add(intervalField);
+
+	        // Buttons
+	        checkButton = new JButton("🔔 Check");
+	        checkButton.setBounds(40, 200, 120, 35);
+	        checkButton.setBackground(new Color(120, 180, 255));
+	        checkButton.setForeground(Color.WHITE);
+	        panel.add(checkButton);
+
+	        saveButton = new JButton("💾 Save");
+	        saveButton.setBounds(180, 200, 120, 35);
+	        saveButton.setBackground(new Color(100, 200, 150));
+	        saveButton.setForeground(Color.WHITE);
+	        panel.add(saveButton);
+
+	        viewButton = new JButton("📊 History");
+	        viewButton.setBounds(320, 200, 150, 35);
+	        viewButton.setBackground(new Color(180, 140, 255));
+	        viewButton.setForeground(Color.WHITE);
+	        panel.add(viewButton);
+
+	        // Search section
+	        JLabel searchLabel = new JLabel("Search Vehicle:");
+	        searchLabel.setBounds(40, 270, 120, 25);
+	        panel.add(searchLabel);
+
+	        searchField = new JTextField();
+	        searchField.setBounds(180, 270, 200, 28);
+	        panel.add(searchField);
+
+	        searchButton = new JButton("🔍 Search");
+	        searchButton.setBounds(180, 310, 150, 35);
+	        searchButton.setBackground(new Color(255, 170, 120));
+	        searchButton.setForeground(Color.WHITE);
+	        panel.add(searchButton);
+
+	        checkButton.addActionListener(this);
+	        saveButton.addActionListener(this);
+	        viewButton.addActionListener(this);
+	        searchButton.addActionListener(this);
+
+	        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+	        setVisible(true);
+	    }
+
+	    public void actionPerformed(ActionEvent e) {
+
+	        if (e.getSource() == viewButton) {
+	            showTable(null);
+	            return;
+	        }
+
+	        if (e.getSource() == searchButton) {
+	            String keyword = searchField.getText().toLowerCase();
+	            showTable(keyword);
+	            return;
+	        }
+
+	        String vehicle = vehicleField.getText();
+	        String dateInput = dateField.getText();
+	        String intervalText = intervalField.getText();
+
+	        try {
+	            int interval = Integer.parseInt(intervalText);
+
+	            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+	            LocalDate lastDate = LocalDate.parse(dateInput, formatter);
+	            LocalDate nextDate = lastDate.plusDays(interval);
+	            LocalDate today = LocalDate.now();
+
+	            long days = ChronoUnit.DAYS.between(today, nextDate);
+
+	            String message;
+
+	            if (days > 0) {
+	                message = "Due in " + days + " days";
+	            } else if (days == 0) {
+	                message = "Due TODAY";
+	            } else {
+	                message = "OVERDUE by " + Math.abs(days) + " days";
+	            }
+
+	            JOptionPane.showMessageDialog(this,
+	                    "🚗 " + vehicle +
+	                    "\nNext Service: " + nextDate +
+	                    "\n" + message);
+
+	            if (e.getSource() == saveButton) {
+	                FileWriter fw = new FileWriter("service_records.txt", true);
+	                fw.write(vehicle + "," + lastDate + "," + nextDate + "," + message + "\n");
+	                fw.close();
+
+	                JOptionPane.showMessageDialog(this, "✅ Record Saved!");
+	            }
+
+	        } catch (Exception ex) {
+	            JOptionPane.showMessageDialog(this, "⚠️ Invalid Input!");
+	        }
+	    }
+
+	    // SHOW TABLE (WITH OPTIONAL SEARCH)
+	    public void showTable(String keyword) {
+
+	        JFrame frame = new JFrame("📊 Service History");
+	        frame.setSize(650, 300);
+
+	        String[] columns = {"Vehicle", "Last Service", "Next Service", "Status"};
+	        DefaultTableModel model = new DefaultTableModel(columns, 0);
+
+	        try {
+	            BufferedReader br = new BufferedReader(new FileReader("service_records.txt"));
+	            String line;
+
+	            while ((line = br.readLine()) != null) {
+	                String[] data = line.split(",");
+
+	                if (keyword == null || data[0].toLowerCase().contains(keyword)) {
+	                    model.addRow(data);
+	                }
+	            }
+
+	            br.close();
+
+	        } catch (Exception e) {
+	            JOptionPane.showMessageDialog(this, "No records found!");
+	        }
+
+	        JTable table = new JTable(model);
+	        table.setRowHeight(25);
+
+	        JScrollPane scrollPane = new JScrollPane(table);
+	        frame.add(scrollPane);
+
+	        frame.setVisible(true);
+	    }
+
+	    public static void main(String[] args) {
+	        new VehicleServiceGUI();
+	    }
+	}
+
+
